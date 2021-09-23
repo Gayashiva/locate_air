@@ -1,8 +1,10 @@
 import pandas as pd
 import math
 import numpy as np
-from datetime import datetime
+from datetime import datetime, timedelta
 from methods.solar import get_solar
+import matplotlib
+import matplotlib.pyplot as plt
 
 """Model hyperparameter"""
 DT = 60 * 60  # Model time step
@@ -37,52 +39,60 @@ vp_ice = (
     / ((0+ 868)**2 * 100)
 )
 
-def location_energy(p_a = 700, RH = 50, cld = 1, r = 10, v_a = 2, SW_global=1000):
+def location_energy(merged_df, p_a = 700, RH = 50, cld = 1, r = 10, v_a = 2):
 
     data = []
     A = 3.14 * r**2
-    # f = 1.0016+3.15*math.pow(10,-6) * p_a-0.074*math.pow(p_a,-1)
 
-    for T_a in range(-10, 10):
-        vp_a = (
-            6.107
-            * math.pow(
-                10,
-                7.5 * T_a / (T_a + 237.3),
+    # print(merged_df)
+    for RH in range(0,100,5):
+        ice = 0
+        for index, row in merged_df.iterrows():
+
+            T_a = row['temp']
+
+            Qs = (
+                C_A
+                * RHO_A
+                * p_a
+                / P0
+                * math.pow(VAN_KARMAN, 2)
+                * v_a
+                * T_a
+                / ((np.log(H_AWS / Z)) ** 2)
             )
-            * RH
-            / 100
-        )
-        e_a = (1.24* math.pow(abs(vp_a / (T_a + 273.15)), 1 / 7)) * (1 + 0.22 * math.pow(cld, 2))
-        LW = e_a * STEFAN_BOLTZMAN * math.pow(T_a + 273.15, 4) - IE * STEFAN_BOLTZMAN * math.pow(273.15,4)
-        Ql = (
-            0.623
-            * L_S
-            * RHO_A
-            / P0
-            * math.pow(VAN_KARMAN, 2)
-            * v_a
-            * (vp_a - vp_ice)
-            / ((np.log(H_AWS / Z)) ** 2)
-        )
 
-        Qs = (
-            C_A
-            * RHO_A
-            * p_a
-            / P0
-            * math.pow(VAN_KARMAN, 2)
-            * v_a
-            * T_a
-            / ((np.log(H_AWS / Z)) ** 2)
-        )
+            SW = (1 - A_I) * row['ghi']
 
-        SW = (1 - A_I) * SW_global
+            vp_a = (
+                6.107
+                * math.pow(
+                    10,
+                    7.5 * T_a / (T_a + 237.3),
+                )
+                * RH
+                / 100
+            )
 
-        ice = (Ql+Qs+LW) * A/L_F * 1000/60
-        data.append([T_a, LW, SW, Ql, Qs, round(ice,2)])
+            e_a = (1.24* math.pow(abs(vp_a / (T_a + 273.15)), 1 / 7)) * (1 + 0.22 * math.pow(cld, 2))
 
-    df = pd.DataFrame(data, columns=['T_a','LW', 'SW', 'Ql', 'Qs','ice'])
+            LW = e_a * STEFAN_BOLTZMAN * math.pow(T_a + 273.15, 4) - IE * STEFAN_BOLTZMAN * math.pow(273.15,4)
+            Ql = (
+                0.623
+                * L_S
+                * RHO_A
+                / P0
+                * math.pow(VAN_KARMAN, 2)
+                * v_a
+                * (vp_a - vp_ice)
+                / ((np.log(H_AWS / Z)) ** 2)
+            )
+            ice += (Ql+Qs+LW) * A/L_F * 1000/60
+            # data.append([index, T_a, RH, LW, SW, Ql, Qs, round(ice,2)])
+        data.append([RH, round(ice,2)])
+
+    # df = pd.DataFrame(data, columns=['When', 'T_a','RH', 'LW', 'SW', 'Ql', 'Qs','ice'])
+    df = pd.DataFrame(data, columns=['RH', 'ice'])
     return df
 
 if __name__ == "__main__":
@@ -98,7 +108,41 @@ if __name__ == "__main__":
         end=end_date,
         DT=DT,
     )
-    print(solar_df.ghi.max())
-    df = location_energy(SW_global=solar_df.ghi.max())
-    print(df) 
+    solar_df = solar_df.set_index('When')
+    
+    path_inp = '/home/suryab/work/melodist/usr/sim_temp_daily.csv'
+    tempdf = pd.read_csv(path_inp, index_col=0, parse_dates=True)
+    merged_df = tempdf.merge(solar_df, left_index=True, right_index=True)
 
+    data = []
+    for i in range(10,30):
+        start = datetime(2021, 1, 1) + timedelta(days=i)
+        start = start.strftime("%Y-%m-%d")
+        temp = i - 10
+        plot_period = slice(start, start)
+        df = location_energy(merged_df.loc[plot_period])
+        df = df.loc[df.ice>0]
+        RH_limit = df.RH.iloc[0]
+        data.append([temp, RH_limit])
+    df_out = pd.DataFrame(data, columns=['temp', 'RH_limit'])
+    print(df_out)
+
+    # plt.figure()
+    # ax = plt.gca()
+    # df = location_energy(merged_df.loc[plot_period])
+    # df.plot(ax=ax, y='ice', x = 'RH')
+    # plt.legend()
+    # plt.grid()
+    # plt.savefig('try2.jpg')
+
+    # plt.figure()
+    # ax = plt.gca()
+    # df.loc[plot_period].ice.plot(ax=ax)
+    # df.loc[plot_period].LW.plot(ax=ax)
+    # df.loc[plot_period].SW.plot(ax=ax)
+    # df.loc[plot_period].Ql.plot(ax=ax)
+    # df.loc[plot_period].Qs.plot(ax=ax)
+    # df.SW.plot(ax=ax)
+    # df.T_a.plot(ax=ax)
+    # plt.legend()
+    # plt.savefig('try.jpg')
