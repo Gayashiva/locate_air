@@ -38,12 +38,13 @@ vp_ice = np.exp(43.494 - 6545.8 / (0 + 278)) / ((0 + 868) ** 2 * 100)
 
 
 # def max_discharge(T_min, RH_min, v_max=10, p_a=700, cld=0, r=10):
-def max_discharge(data, p_a=700, cld=0, h_max=20):
+def max_discharge(data, p_a=700, cld=0):
 
     T_min = data[0]
     RH_min = data[1]
     v_max = data[2]
     r = data[3]
+    h_max = r
 
     A = (
         math.pi
@@ -106,9 +107,9 @@ def max_discharge(data, p_a=700, cld=0, h_max=20):
 if __name__ == "__main__":
 
     temp = list(range(-20, 1))
-    rh = list(range(5, 100, 10))
+    rh = list(range(5, 100, 5))
     v = list(range(3, 6))
-    r = list(range(6, 12))
+    r = list(range(6, 15))
     da = xr.DataArray(
         data=np.zeros(len(temp) * len(rh) * len(v) * len(r)).reshape(
             len(temp), len(rh), len(v), len(r)
@@ -129,14 +130,12 @@ if __name__ == "__main__":
         for j in rh:
             for k in v:
                 for l in r:
-                    da.sel(temp=i, rh=j, v=k, r=l).data += max_discharge(
-                        [i, j, k, l], h_max=5
-                    )
+                    da.sel(temp=i, rh=j, v=k, r=l).data += max_discharge([i, j, k, l])
     print(da.sel(temp=-7, rh=15, v=4, r=10).data)
 
     plt.figure()
     ax = plt.gca()
-    da.sel(temp=slice(-16, 0), v=5, r=6).plot()
+    da.sel(temp=slice(-16, 0), v=5, r=12).plot()
     plt.legend()
     plt.grid()
     plt.savefig("try2.jpg")
