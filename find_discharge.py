@@ -131,11 +131,11 @@ if __name__ == "__main__":
             for k in v:
                 for l in r:
                     da.sel(temp=i, rh=j, v=k, r=l).data += max_discharge([i, j, k, l])
-    print(da.sel(temp=-7, rh=15, v=4, r=10).data)
+    print(da.sel(temp=-7, rh=10, v=4, r=10).data)
 
     plt.figure()
     ax = plt.gca()
-    da.sel(temp=slice(-16, 0), v=5, r=12).plot()
+    da.sel(temp=slice(-16, 0), v=3, r=10).plot()
     plt.legend()
     plt.grid()
     plt.savefig("try2.jpg")
