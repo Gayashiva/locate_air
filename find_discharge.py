@@ -32,9 +32,8 @@ A_S = 0.85  # Albedo of Fresh Snow A_S
 A_DECAY = 16  # Albedo decay rate decay_t_d
 Z = 0.003  # Ice Momentum and Scalar roughness length
 T_PPT = 1  # Temperature condition for liquid precipitation
+DX = 20e-03  # m Surface layer thickness growth rate
 H_AWS = 2
-
-vp_ice = np.exp(43.494 - 6545.8 / (0 + 278)) / ((0 + 868) ** 2 * 100)
 
 
 def max_discharge(data, p_a=700, cld=0):
@@ -42,8 +41,10 @@ def max_discharge(data, p_a=700, cld=0):
     T_min = data[0]
     RH_min = data[1]
     v_max = data[2]
-    r = data[3]
+    r = 10
+    T_s_min = data[3]
     h_max = r
+    shape_corr = 1.5
 
     A = (
         math.pi
@@ -62,7 +63,8 @@ def max_discharge(data, p_a=700, cld=0):
         / P0
         * math.pow(VAN_KARMAN, 2)
         * v_max
-        * T_min
+        * (T_min - T_s_min)
+        * shape_corr
         / ((np.log(H_AWS / Z)) ** 2)
     )
 
@@ -78,13 +80,15 @@ def max_discharge(data, p_a=700, cld=0):
         / 100
     )
 
+    vp_ice = np.exp(43.494 - 6545.8 / (T_s_min + 278)) / ((T_s_min + 868) ** 2 * 100)
+
     e_a = (1.24 * math.pow(abs(vp_a / (T_min + 273.15)), 1 / 7)) * (
         1 + 0.22 * math.pow(cld, 2)
     )
 
     LW = e_a * STEFAN_BOLTZMAN * math.pow(
         T_min + 273.15, 4
-    ) - IE * STEFAN_BOLTZMAN * math.pow(273.15, 4)
+    ) - IE * STEFAN_BOLTZMAN * math.pow(273.15 + T_s_min, 4)
     Ql = (
         0.623
         * L_S
@@ -93,9 +97,12 @@ def max_discharge(data, p_a=700, cld=0):
         * math.pow(VAN_KARMAN, 2)
         * v_max
         * (vp_a - vp_ice)
+        * shape_corr
         / ((np.log(H_AWS / Z)) ** 2)
     )
-    freeze_rate = -(Ql + Qs + LW) * A / L_F * 1000 / 60
+    freezing_energy = Ql + Qs + LW
+    freezing_energy += T_s_min * RHO_I * DX * C_I / DT
+    freeze_rate = -1 * freezing_energy * A / L_F * 1000 / 60
 
     if freeze_rate < 0:
         freeze_rate = 0
@@ -204,7 +211,7 @@ if __name__ == "__main__":
         temp = list(range(-20, 2))
         rh = list(range(10, 90, 10))
         v = list(range(0, 10))
-        r = list(range(6, 11))
+        t_s = list(range(-10, 0))
         da = xr.DataArray(
             # {
             #     "discharge": (
@@ -214,15 +221,15 @@ if __name__ == "__main__":
             #         ),
             #     )
             # },
-            data=np.zeros(len(temp) * len(rh) * len(v) * len(r)).reshape(
-                len(temp), len(rh), len(v), len(r)
+            data=np.zeros(len(temp) * len(rh) * len(v) * len(t_s)).reshape(
+                len(temp), len(rh), len(v), len(t_s)
             ),
-            dims=["temp", "rh", "v", "r"],
+            dims=["temp", "rh", "v", "t_s"],
             coords=dict(
                 temp=temp,
                 rh=rh,
                 v=v,
-                r=r,
+                t_s=t_s,
             ),
             attrs=dict(
                 long_name="Freezing rate",
@@ -236,17 +243,17 @@ if __name__ == "__main__":
         da.temp.attrs["long_name"] = "Air Temperature"
         da.rh.attrs["units"] = "%"
         da.rh.attrs["long_name"] = "Relative Humidity"
-        da.r.attrs["units"] = "m"
-        da.r.attrs["long_name"] = "Spray Radius"
+        da.t_s.attrs["units"] = "deg C"
+        da.t_s.attrs["long_name"] = "Ice temp"
         da.v.attrs["units"] = "m s-1"
         da.v.attrs["long_name"] = "Wind Speed"
 
         for i in temp:
             for j in rh:
                 for k in v:
-                    for l in r:
+                    for l in t_s:
                         # da.sel(temp=i, rh=j, v=k, r=l)["data"] += max_discharge(
-                        da.sel(temp=i, rh=j, v=k, r=l).data += max_discharge(
+                        da.sel(temp=i, rh=j, v=k, t_s=l).data += max_discharge(
                             [i, j, k, l]
                         )
         da.to_netcdf("saved_on_disk.nc")
@@ -254,13 +261,13 @@ if __name__ == "__main__":
 
         plt.figure()
         ax = plt.gca()
-        da.sel(temp=slice(-15, None), rh=80, r=10).plot()
+        da.sel(temp=slice(-15, None), rh=50, v=5, t_s=-1).plot()
         for ctr, point in enumerate(points):
-            plt.scatter(point[0], point[1], label=locations[ctr])
             discharge = da.sel(
-                temp=point[1], v=point[0], rh=80, r=10, method="nearest"
+                temp=point[1], rh=50, t_s=-1, v=5, method="nearest"
             ).values
-            plt.annotate(discharge, (point[0], point[1]), color="yellow")
+            plt.scatter(point[1], discharge, label=locations[ctr])
+            # plt.annotate(discharge, (point[1], discharge), color="yellow")
         plt.legend()
         plt.grid()
         plt.savefig("try2.jpg")
