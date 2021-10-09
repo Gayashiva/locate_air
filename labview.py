@@ -1,11 +1,8 @@
-import pandas as pd
-import xarray as xr
 import math
 import numpy as np
-from datetime import datetime, timedelta
-from methods.solar import get_solar
-import matplotlib
-import matplotlib.pyplot as plt
+from pvlib import location, atmosphere
+from datetime import datetime
+
 
 """Model hyperparameter"""
 DT = 60 * 60  # Model time step
@@ -35,74 +32,110 @@ T_PPT = 1  # Temperature condition for liquid precipitation
 DX = 20e-03  # m Surface layer thickness growth rate
 H_AWS = 2
 
+"""Location parameters"""
+lat = 46.65
+long=8.2834
+alt=1047.6
+utc = 2
 
-def max_discharge(Temp, RH, Wind, p_a=700, cld=0):
 
-    T_min = Temp
-    RH_min = RH
-    v_max = Wind
-    r = 10
-    h_max = r
-    shape_corr = 1.5
+"""Misc parameters"""
+cld=0
+r = 10
+shape_corr = 1.5
+temp_i=0
 
-    A = (
-        math.pi
-        * r
-        * math.pow(
-            (math.pow(r, 2) + math.pow(h_max, 2)),
-            1 / 2,
+
+def Discharge(aws, mode="auto"):
+
+    # AWS
+    time = aws[0]
+    temp = aws[1]
+    rh = aws[2]
+    wind = aws[3]
+
+    # Derived
+    press=atmosphere.alt2pres(alt)/100
+    site = location.Location(lat,long,tz=utc)
+    solar_angle = site.get_solarposition(times=time, method="ephemeris")["elevation"][0]
+
+    if mode not in ["demo", "auto", "stop"] or mode == "stop":
+        dis = 0
+    elif solar_angle >= 0:
+        dis = 0
+    elif wind >= 10:
+        dis = 0
+    elif mode == "demo":
+        dis = 10
+    else:
+
+        h_max = r
+
+        # Overestimate area
+        A = (
+            math.pi
+            * r
+            * math.pow(
+                (math.pow(r, 2) + math.pow(h_max, 2)),
+                1 / 2,
+            )
         )
-    )
 
-    Qs = (
-        C_A
-        * RHO_A
-        * p_a
-        / P0
-        * math.pow(VAN_KARMAN, 2)
-        * v_max
-        * (T_min - T_s_min)
-        * shape_corr
-        / ((np.log(H_AWS / Z)) ** 2)
-    )
-
-    SW = 0
-
-    vp_a = (
-        6.107
-        * math.pow(
-            10,
-            7.5 * T_min / (T_min + 237.3),
+        vp_a= (
+            6.107
+            * math.pow(
+                10,
+                7.5 * temp / (temp + 237.3),
+            )
+            * rh
+            / 100
         )
-        * RH_min
-        / 100
-    )
 
-    vp_ice = np.exp(43.494 - 6545.8 / (T_s_min + 278)) / ((T_s_min + 868) ** 2 * 100)
+        vp_ice = np.exp(43.494 - 6545.8 / (temp_i + 278)) / ((temp_i + 868) ** 2 * 100)
 
-    e_a = (1.24 * math.pow(abs(vp_a / (T_min + 273.15)), 1 / 7)) * (
-        1 + 0.22 * math.pow(cld, 2)
-    )
+        e_a = (1.24 * math.pow(abs(vp_a / (temp + 273.15)), 1 / 7)) * (
+            1 + 0.22 * math.pow(cld, 2)
+        )
 
-    LW = e_a * STEFAN_BOLTZMAN * math.pow(
-        T_min + 273.15, 4
-    ) - IE * STEFAN_BOLTZMAN * math.pow(273.15 + T_s_min, 4)
-    Ql = (
-        0.623
-        * L_S
-        * RHO_A
-        / P0
-        * math.pow(VAN_KARMAN, 2)
-        * v_max
-        * (vp_a - vp_ice)
-        * shape_corr
-        / ((np.log(H_AWS / Z)) ** 2)
-    )
-    freezing_energy = Ql + Qs + LW
-    freezing_energy += T_s_min * RHO_I * DX * C_I / DT
-    freeze_rate = -1 * freezing_energy * A / L_F * 1000 / 60
+        SW = 0
 
-    if freeze_rate < 0:
-        freeze_rate = 0
+        LW = e_a * STEFAN_BOLTZMAN * math.pow(
+            temp + 273.15, 4
+        ) - IE * STEFAN_BOLTZMAN * math.pow(273.15 + temp_i, 4)
 
-    return round(freeze_rate, 1)
+        Qs = (
+            C_A
+            * RHO_A
+            * press
+            / P0
+            * math.pow(VAN_KARMAN, 2)
+            * wind
+            * (temp - temp_i)
+            * shape_corr
+            / ((np.log(H_AWS / Z)) ** 2)
+        )
+
+        Ql = (
+            0.623
+            * L_S
+            * RHO_A
+            / P0
+            * math.pow(VAN_KARMAN, 2)
+            * wind
+            * (vp_a - vp_ice)
+            * shape_corr
+            / ((np.log(H_AWS / Z)) ** 2)
+        )
+
+        freezing_energy = Ql + Qs + LW
+        freezing_energy += temp_i * RHO_I * DX * C_I / DT
+        dis = -1 * freezing_energy * A / L_F * 1000 / 60
+
+        if dis < 0:
+            dis = 0
+
+    return round(dis, 1)
+
+if __name__ == "__main__": 
+    aws = [datetime(2019,1,1), -2, 50, 5]
+    print("Recommended discharge", Discharge(aws))
