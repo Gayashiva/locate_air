@@ -34,16 +34,16 @@ H_AWS = 2
 
 """Location parameters"""
 lat = 46.65
-long=8.2834
-alt=1047.6
+long = 8.2834
+alt = 1047.6
 utc = 2
 
 
 """Misc parameters"""
-cld=0
+cld = 0
 r = 10
 shape_corr = 1.5
-temp_i=0
+temp_i = 0
 
 
 def Discharge(aws, mode="auto"):
@@ -55,8 +55,8 @@ def Discharge(aws, mode="auto"):
     wind = aws[3]
 
     # Derived
-    press=atmosphere.alt2pres(alt)/100
-    site = location.Location(lat,long,tz=utc)
+    press = atmosphere.alt2pres(alt) / 100
+    site = location.Location(lat, long, tz=utc, altitude=alt)
     solar_angle = site.get_solarposition(times=time, method="ephemeris")["elevation"][0]
 
     if mode not in ["demo", "auto", "stop"] or mode == "stop":
@@ -81,7 +81,7 @@ def Discharge(aws, mode="auto"):
             )
         )
 
-        vp_a= (
+        vp_a = (
             6.107
             * math.pow(
                 10,
@@ -136,6 +136,7 @@ def Discharge(aws, mode="auto"):
 
     return round(dis, 1)
 
-if __name__ == "__main__": 
-    aws = [datetime(2019,1,1), -2, 50, 5]
+
+if __name__ == "__main__":
+    aws = [datetime(2019, 1, 1), -2, 50, 5]
     print("Recommended discharge", Discharge(aws))

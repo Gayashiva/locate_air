@@ -1,11 +1,13 @@
 import pandas as pd
 import xarray as xr
+from scipy.optimize import curve_fit
 import math
 import numpy as np
 from datetime import datetime, timedelta
 from methods.solar import get_solar
 import matplotlib
 import matplotlib.pyplot as plt
+from labview import Discharge
 
 """Model hyperparameter"""
 DT = 60 * 60  # Model time step
@@ -36,249 +38,85 @@ DX = 20e-03  # m Surface layer thickness growth rate
 H_AWS = 2
 
 
-def max_discharge(data, p_a=700, cld=0):
+def line(x, a, b):
+    return a * x + b
 
-    T_min = data[0]
-    RH_min = data[1]
-    v_max = data[2]
-    r = 10
-    T_s_min = data[3]
-    h_max = r
-    shape_corr = 1.5
 
-    A = (
-        math.pi
-        * r
-        * math.pow(
-            (math.pow(r, 2) + math.pow(h_max, 2)),
-            1 / 2,
-        )
-    )
-    # A = 3.14 * r ** 2
-
-    Qs = (
-        C_A
-        * RHO_A
-        * p_a
-        / P0
-        * math.pow(VAN_KARMAN, 2)
-        * v_max
-        * (T_min - T_s_min)
-        * shape_corr
-        / ((np.log(H_AWS / Z)) ** 2)
-    )
-
-    SW = 0
-
-    vp_a = (
-        6.107
-        * math.pow(
-            10,
-            7.5 * T_min / (T_min + 237.3),
-        )
-        * RH_min
-        / 100
-    )
-
-    vp_ice = np.exp(43.494 - 6545.8 / (T_s_min + 278)) / ((T_s_min + 868) ** 2 * 100)
-
-    e_a = (1.24 * math.pow(abs(vp_a / (T_min + 273.15)), 1 / 7)) * (
-        1 + 0.22 * math.pow(cld, 2)
-    )
-
-    LW = e_a * STEFAN_BOLTZMAN * math.pow(
-        T_min + 273.15, 4
-    ) - IE * STEFAN_BOLTZMAN * math.pow(273.15 + T_s_min, 4)
-    Ql = (
-        0.623
-        * L_S
-        * RHO_A
-        / P0
-        * math.pow(VAN_KARMAN, 2)
-        * v_max
-        * (vp_a - vp_ice)
-        * shape_corr
-        / ((np.log(H_AWS / Z)) ** 2)
-    )
-    freezing_energy = Ql + Qs + LW
-    freezing_energy += T_s_min * RHO_I * DX * C_I / DT
-    freeze_rate = -1 * freezing_energy * A / L_F * 1000 / 60
-
-    if freeze_rate < 0:
-        freeze_rate = 0
-
-    return round(freeze_rate, 1)
+def line2(x, a1, a2, a3, b):
+    x1 = x[:, 0]
+    x2 = x[:, 1]
+    x3 = x[:, 2]
+    return a1 * x1 + a2 * x2 + a3 * x3 + b
 
 
 if __name__ == "__main__":
+    temp = list(range(-20, 0))
+    rh = list(range(10, 90, 10))
+    v = list(range(0, 10))
+    da = xr.DataArray(
+        data=np.zeros(len(temp) * len(rh) * len(v)).reshape(len(temp), len(rh), len(v)),
+        dims=["temp", "rh", "v"],
+        coords=dict(
+            temp=temp,
+            rh=rh,
+            v=v,
+        ),
+        attrs=dict(
+            long_name="Freezing rate",
+            description="Max. freezing rate",
+            units="l min-1",
+        ),
+    )
 
-    compile = 1
+    da.temp.attrs["units"] = "deg C"
+    da.temp.attrs["description"] = "Air Temperature"
+    da.temp.attrs["long_name"] = "Air Temperature"
+    da.rh.attrs["units"] = "%"
+    da.rh.attrs["long_name"] = "Relative Humidity"
+    da.v.attrs["units"] = "m s-1"
+    da.v.attrs["long_name"] = "Wind Speed"
 
-    if compile:
+    time = datetime(2019, 1, 1)
+    # aws = [datetime(2019, 1, 1), -2, 50, 5]
 
-        locations = ["guttannen", "diavolezza", "schwarzsee", "gangles", "ravat"]
-        points = []
-        for loc in locations:
-            print(loc)
-            if loc == "schwarzsee":
-                df = pd.read_csv(
-                    "/home/suryab/work/air_model/data/"
-                    + loc
-                    + "19/interim/"
-                    + loc
-                    + "19_input_model.csv",
-                    sep=",",
-                    header=0,
-                    # parse_dates=["TIMESTAMP"],
-                    parse_dates=["When"],
-                )
-                df = df.rename(
-                    columns={"When": "time", "T_a": "temp", "RH": "rh", "v_a": "v"}
-                )
-                df = df.set_index("time")
-                df = df[["temp", "rh", "v"]].to_xarray().sel(time="2019-02")
-            if loc == "ravat":
-                df = pd.read_csv(
-                    "/home/suryab/work/air_model/data/"
-                    + loc
-                    + "20/interim/"
-                    + loc
-                    + "20_input_ERA5.csv",
-                    sep=",",
-                    header=0,
-                    # parse_dates=["TIMESTAMP"],
-                    parse_dates=["When"],
-                )
-                df = df.rename(
-                    columns={"When": "time", "T_a": "temp", "RH": "rh", "v_a": "v"}
-                )
-                df = df.set_index("time")
-                df = df[["temp", "rh", "v"]].to_xarray().sel(time="2020-01")
-            if loc == "diavolezza":
-                df = pd.read_csv(
-                    "/home/suryab/work/air_model/data/"
-                    + loc
-                    + "21/interim/"
-                    + loc
-                    + "21_input_ERA5.csv",
-                    sep=",",
-                    header=0,
-                    # parse_dates=["TIMESTAMP"],
-                    parse_dates=["When"],
-                )
-                df = df.rename(
-                    columns={"When": "time", "T_a": "temp", "RH": "rh", "v_a": "v"}
-                )
-                df = df.set_index("time")
-                df = df[["temp", "rh", "v"]].to_xarray().sel(time="2021-01")
-            if loc == "guttannen":
-                df = pd.read_csv(
-                    "/home/suryab/work/air_model/data/"
-                    + loc
-                    + "21/interim/"
-                    + loc
-                    + "21_input_ERA5.csv",
-                    sep=",",
-                    header=0,
-                    parse_dates=["TIMESTAMP"],
-                )
-                df = df.rename(
-                    columns={"TIMESTAMP": "time", "T_A": "temp", "RH": "rh", "WS": "v"}
-                )
-                df = df.set_index("time")
-                df = df[["temp", "rh", "v"]].to_xarray().sel(time="2020-01")
-            if loc == "gangles":
-                df = pd.read_csv(
-                    "/home/suryab/work/air_model/data/"
-                    + loc
-                    + "21/interim/"
-                    + loc
-                    + "21_input_model.csv",
-                    sep=",",
-                    header=0,
-                    parse_dates=["TIMESTAMP"],
-                )
-                df = df.rename(
-                    columns={"TIMESTAMP": "time", "T_A": "temp", "RH": "rh", "WS": "v"}
-                )
-                df = df.set_index("time")
-                df = df[["temp", "rh", "v"]].to_xarray().sel(time="2021-01")
-            q1 = df.temp.quantile([0.25, 0.5, 0.75]).values
-            q2 = df.v.quantile([0.25, 0.5, 0.75]).values
-            points.append([q2[1], q1[1]])
-        print(points)
+    for i in temp:
+        for j in rh:
+            for k in v:
+                aws = [time, i, j, k]
+                da.sel(temp=i, rh=j, v=k).data += Discharge(aws)
 
-        temp = list(range(-20, 2))
-        rh = list(range(10, 90, 10))
-        v = list(range(0, 10))
-        t_s = list(range(-10, 0))
-        da = xr.DataArray(
-            # {
-            #     "discharge": (
-            #         ("temp", "rh", "v", "r"),
-            #         np.zeros(len(temp) * len(rh) * len(v) * len(r)).reshape(
-            #             len(temp), len(rh), len(v), len(r)
-            #         ),
-            #     )
-            # },
-            data=np.zeros(len(temp) * len(rh) * len(v) * len(t_s)).reshape(
-                len(temp), len(rh), len(v), len(t_s)
-            ),
-            dims=["temp", "rh", "v", "t_s"],
-            coords=dict(
-                temp=temp,
-                rh=rh,
-                v=v,
-                t_s=t_s,
-            ),
-            attrs=dict(
-                long_name="Freezing rate",
-                description="Max. freezing rate",
-                units="l min-1",
-            ),
-        )
+    # da.sel(temp=slice(-15, None), rh=50, v=2).plot()
+    # y = da.sel(temp=slice(-15, None), rh=50, v=2).values
+    # x = da.sel(temp=slice(-10, None), rh=50, v=2).temp.values
+    # y2 = da.sel(rh=50).data
+    # x1 = da.sel(rh=50).temp.values
+    # x2 = da.sel(rh=50).v.values
+    # plt.figure()
+    # ax = plt.gca()
+    # da.sel(temp=slice(-15, None), rh=50, v=2).plot()
+    # plt.legend()
+    # plt.grid()
+    # plt.savefig("temp_wind.jpg")
 
-        da.temp.attrs["units"] = "deg C"
-        da.temp.attrs["description"] = "Air Temperature"
-        da.temp.attrs["long_name"] = "Air Temperature"
-        da.rh.attrs["units"] = "%"
-        da.rh.attrs["long_name"] = "Relative Humidity"
-        da.t_s.attrs["units"] = "deg C"
-        da.t_s.attrs["long_name"] = "Ice temp"
-        da.v.attrs["units"] = "m s-1"
-        da.v.attrs["long_name"] = "Wind Speed"
+    x = []
+    y = []
+    for i in temp:
+        for j in rh:
+            for k in v:
+                x.append([i, j, k])
+                y.append(da.sel(temp=i, rh=j, v=k).data)
+    # print(y)
+    # print(x)
 
-        for i in temp:
-            for j in rh:
-                for k in v:
-                    for l in t_s:
-                        # da.sel(temp=i, rh=j, v=k, r=l)["data"] += max_discharge(
-                        da.sel(temp=i, rh=j, v=k, t_s=l).data += max_discharge(
-                            [i, j, k, l]
-                        )
-        da.to_netcdf("saved_on_disk.nc")
-        # da1 = da.sel(temp=slice(-15, None), rh=80, v=6, r=7)
+    popt, pcov = curve_fit(line2, x, y)
+    a1, a2, a3, b = popt
+    print("y = %.5f * temp + %.5f * rh + %.5f * wind + %.5f" % (a1, a2, a3, b))
 
-        plt.figure()
-        ax = plt.gca()
-        da.sel(temp=slice(-15, None), rh=50, v=5, t_s=-1).plot()
-        for ctr, point in enumerate(points):
-            discharge = da.sel(
-                temp=point[1], rh=50, t_s=-1, v=5, method="nearest"
-            ).values
-            plt.scatter(point[1], discharge, label=locations[ctr])
-            # plt.annotate(discharge, (point[1], discharge), color="yellow")
-        plt.legend()
-        plt.grid()
-        plt.savefig("try2.jpg")
-    # else:
-    #     with xr.open_dataset("saved_on_disk.nc") as da:
-    #         print(da)
-    #         da1 = da.sel(temp=slice(-15, None), rh=80, v=6, r=7)
-    #         print(da1.discharge)
-    #         plt.figure()
-    #         ax = plt.gca()
-    #         da1.to_dataframe()["discharge"].plot()
-    #         plt.legend()
-    #         plt.grid()
-    #         plt.savefig("try2.jpg")
+    # xfine = np.linspace(-10, 0)  # define values to plot the function for
+    # plt.figure()
+    # ax = plt.gca()
+    # plt.plot(xfine, line(xfine, popt[0], popt[1]), "r-")
+    # da.sel(temp=slice(-15, None), rh=50, v=2).plot()
+    # plt.legend()
+    # plt.grid()
+    # plt.savefig("fit_temp.jpg")
