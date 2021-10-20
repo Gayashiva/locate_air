@@ -40,10 +40,12 @@ utc = 2
 
 
 """Misc parameters"""
-cld = 0
+cld = 1
 r = 10
 shape_corr = 1.5
 temp_i = 0
+dis_min = 5
+alb = 0.3
 
 
 def Discharge(aws, mode="auto"):
@@ -53,15 +55,15 @@ def Discharge(aws, mode="auto"):
     temp = aws[1]
     rh = aws[2]
     wind = aws[3]
+    SW_global = aws[4]
 
     # Derived
     press = atmosphere.alt2pres(alt) / 100
-    site = location.Location(lat, long, tz=utc, altitude=alt)
-    solar_angle = site.get_solarposition(times=time, method="ephemeris")["elevation"][0]
+    # site = location.Location(lat, long, tz=utc, altitude=alt)
+    # solar_angle = site.get_solarposition(times=time, method="ephemeris")["elevation"][0]
+    # clearsky = site.get_clearsky(times=time)
 
     if mode not in ["demo", "auto", "stop"] or mode == "stop":
-        dis = 0
-    elif solar_angle >= 0:
         dis = 0
     elif wind >= 10:
         dis = 0
@@ -69,17 +71,7 @@ def Discharge(aws, mode="auto"):
         dis = 10
     else:
 
-        h_max = r
-
-        # Overestimate area
-        A = (
-            math.pi
-            * r
-            * math.pow(
-                (math.pow(r, 2) + math.pow(h_max, 2)),
-                1 / 2,
-            )
-        )
+        A = math.pi * r ** 2
 
         vp_a = (
             6.107
@@ -97,7 +89,8 @@ def Discharge(aws, mode="auto"):
             1 + 0.22 * math.pow(cld, 2)
         )
 
-        SW = 0
+        SW = (1 - alb) * SW_global
+        # SW = (1 - alb) * clearsky["ghi"]
 
         LW = e_a * STEFAN_BOLTZMAN * math.pow(
             temp + 273.15, 4
@@ -127,11 +120,11 @@ def Discharge(aws, mode="auto"):
             / ((np.log(H_AWS / Z)) ** 2)
         )
 
-        freezing_energy = Ql + Qs + LW
+        freezing_energy = Ql + Qs + LW + SW
         freezing_energy += temp_i * RHO_I * DX * C_I / DT
         dis = -1 * freezing_energy * A / L_F * 1000 / 60
 
-        if dis < 0:
+        if dis <= dis_min:
             dis = 0
 
     return round(dis, 1)
