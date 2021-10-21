@@ -3,11 +3,8 @@ import numpy as np
 from pvlib import location, atmosphere
 from datetime import datetime
 
-
-"""Model hyperparameter"""
-DT = 60 * 60  # Model time step
-
 """Physical Constants"""
+DT = 60 * 60  # Model time step
 L_S = 2848 * 1000  # J/kg Sublimation
 L_F = 334 * 1000  # J/kg Fusion
 C_A = 1.01 * 1000  # J/kgC Specific heat air
@@ -48,7 +45,7 @@ dis_min = 5
 alb = 0.3
 
 
-def Discharge(aws, mode="auto"):
+def Automate(aws, mode="auto"):
 
     # AWS
     time = aws[0]

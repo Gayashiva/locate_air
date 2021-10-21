@@ -5,9 +5,8 @@ import math
 import numpy as np
 from datetime import datetime, timedelta
 from pvlib import location, atmosphere
-import matplotlib
 import matplotlib.pyplot as plt
-from labview import Discharge
+from labview import Automate
 
 """Location parameters"""
 lat = 46.65
@@ -25,13 +24,13 @@ def line(x, a1, a2, a3, b):
 
 if __name__ == "__main__":
     compile = True
-    compile = False
+    # compile = False
 
     # time = datetime(2019, 1, 1, 12)
     times = pd.date_range("2019-01-01", freq="H", periods=1 * 24)
     temp = list(range(-15, 0))
-    rh = list(range(10, 90, 30))
-    v = list(range(0, 10, 2))
+    rh = list(range(10, 90, 10))
+    v = list(range(0, 10, 1))
 
     site = location.Location(lat, long, tz=utc, altitude=alt)
     clearsky = site.get_clearsky(times=times)["ghi"]
@@ -62,17 +61,26 @@ if __name__ == "__main__":
         da.v.attrs["units"] = "m s-1"
         da.v.attrs["long_name"] = "Wind Speed"
 
-        for time in times:
-            for i in temp:
-                for j in rh:
-                    for k in v:
-                        aws = [time, i, j, k]
-                        aws.append(clearsky.loc[clearsky.index == time].values[0])
-                        da.sel(times=time, temp=i, rh=j, v=k).data += Discharge(aws)
+        # for time in times:
+        #     for i in temp:
+        #         for j in rh:
+        #             for k in v:
+        #                 aws = [time, i, j, k]
+        #                 aws.append(clearsky.loc[clearsky.index == time].values[0])
+        #                 da.sel(times=time, temp=i, rh=j, v=k).data += Automate(aws)
 
-        da.to_netcdf("sims.nc")
+        for time in da.times.values:
+            SW_global = clearsky.loc[clearsky.index == time].values[0]
+            for temp in da.temp.values:
+                for rh in da.rh.values:
+                    for v in da.v.values:
+                        aws = [time, temp, rh, v]
+                        aws.append(SW_global)
+                        da.sel(times=time, temp=temp, rh=rh, v=v).data += Automate(aws)
+
+        da.to_netcdf("../data/sims.nc")
     else:
-        da = xr.open_dataarray("sims.nc")
+        da = xr.open_dataarray("../data/sims.nc")
 
         x = []
         y = []
@@ -88,11 +96,6 @@ if __name__ == "__main__":
         print("y = %.5f * temp + %.5f * rh + %.5f * wind + %.5f" % (a1, a2, a3, b))
 
         da.sel(temp=slice(-15, None), rh=10, v=2, times=time).plot()
-        # y = da.sel(temp=slice(-15, None), rh=10, v=2, times=time).values
-        # x = da.sel(temp=slice(-10, None), rh=10, v=2, times=time).temp.values
-        # y2 = da.sel(rh=10, times=time).data
-        # x1 = da.sel(rh=10, times=time).temp.values
-        # x2 = da.sel(rh=10, times=time).v.values
         plt.figure()
         ax = plt.gca()
         # da.sel(temp=slice(-15, None), rh=10, v=2, times=time).plot()
@@ -100,7 +103,7 @@ if __name__ == "__main__":
         # da.sel(temp=-15, rh=10, v=2).plot()
         plt.legend()
         plt.grid()
-        plt.savefig("temp_wind.jpg")
+        plt.savefig("../figs/temp_wind.jpg")
 
         # xfine = np.linspace(-10, 0)  # define values to plot the function for
         # plt.figure()
