@@ -37,12 +37,12 @@ utc = 2
 
 
 """Misc parameters"""
-cld = 1
-r = 10
-shape_corr = 1.5
+cld = 0.5
+r = 8
+shape_corr = 1.2
 temp_i = 0
-dis_min = 5
-alb = 0.3
+dis_min = 0
+alb = 0.4
 
 
 def Automate(aws, mode="auto"):
