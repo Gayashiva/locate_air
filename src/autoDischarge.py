@@ -30,16 +30,6 @@ T_PPT = 1  # Temperature condition for liquid precipitation
 DX = 20e-03  # m Surface layer thickness growth rate
 H_AWS = 2
 
-# """Location parameters"""
-# lat = 46.65
-# long = 8.2834
-# alt = 1047.6
-# utc = 2
-
-# cld = 0.5
-# r = 8
-# sa_corr = 1.2
-
 """Misc parameters"""
 temp_i = 0
 dis_min = 0

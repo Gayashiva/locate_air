@@ -21,110 +21,105 @@ def line(x, a1, a2, a3, b):
     return a1 * x1 + a2 * x2 + a3 * x3 + b
 
 
-def autoDis(a1, a2, a3, b, amplitude, center, sigma, temp, time=1000, rh=10, v=2):
+def autoDis(a1, a2, a3, b, amplitude, center, sigma, temp, time=10, rh=10, v=2):
     model = GaussianModel()
     params = {"amplitude": amplitude, "center": center, "sigma": sigma}
     return a1 * temp + a2 * rh + a3 * v + b + model.eval(x=time, **params)
 
 
 if __name__ == "__main__":
-    with open("data/" + site + ".json") as f:
-        params = json.load(f)
-
     # compile = True
     compile = False
 
-    temp = list(range(params["temp"][0], params["temp"][1]))
-    rh = list(range(params["rh"][0], params["rh"][1]))
-    v = list(range(params["wind"][0], params["wind"][1]))
-    # rh = list(range(10, 100, 10))
-    # v = list(range(0, 6, 1))
+    sites = ["gangles", "guttannen"]
 
-    if compile:
-        da = xr.DataArray(
-            data=np.zeros(len(temp) * len(rh) * len(v)).reshape(
-                len(temp), len(rh), len(v)
-            ),
-            dims=["temp", "rh", "v"],
-            coords=dict(
-                # times=times,
-                temp=temp,
-                rh=rh,
-                v=v,
-            ),
-            attrs=dict(
-                long_name="Freezing rate",
-                description="Max. freezing rate",
-                units="l min-1",
-            ),
-        )
+    for site in sites:
+        with open("data/" + site + ".json") as f:
+            params = json.load(f)
 
-        da.temp.attrs["units"] = "deg C"
-        da.temp.attrs["description"] = "Air Temperature"
-        da.temp.attrs["long_name"] = "Air Temperature"
-        da.rh.attrs["units"] = "%"
-        da.rh.attrs["long_name"] = "Relative Humidity"
-        da.v.attrs["units"] = "m s-1"
-        da.v.attrs["long_name"] = "Wind Speed"
+        temp = list(range(params["temp"][0], params["temp"][1] + 1))
+        rh = list(range(params["rh"][0], params["rh"][1] + 1))
+        v = list(range(params["wind"][0], params["wind"][1] + 1))
 
-        for temp in da.temp.values:
-            for rh in da.rh.values:
-                for v in da.v.values:
-                    aws = [temp, rh, v]
-                    da.sel(temp=temp, rh=rh, v=v).data += Automate(aws)
-
-        da.to_netcdf("data/" + site + "_sims.nc")
-
-    else:
-
-        da = xr.open_dataarray("data/" + site + "_sims.nc")
-
-        x = []
-        y = []
-        hour = 1000
-
-        for i in temp:
-            for j in rh:
-                for k in v:
-                    # t = time + timedelta(hours=hour)
-                    x.append([i, j, k])
-                    y.append(da.sel(temp=i, rh=j, v=k).data)
-
-        popt, pcov = curve_fit(line, x, y)
-        a1, a2, a3, b = popt
-        print("y = %.5f * temp + %.5f * rh + %.5f * wind + %.5f" % (a1, a2, a3, b))
-
-        with open("data/sun_model.json") as f:
-            param_values = json.load(f)
-
-        param_values["a1"] = a1
-        param_values["a2"] = a2
-        param_values["a3"] = a3
-        param_values["b"] = b
-
-        with open("data/full.json", "w") as f:
-            json.dump(param_values, f)
-
-        print(
-            "Day melt and night freeze:", autoDis(**param_values, temp=-10, time=hour)
-        )
-
-        print(
-            "y = %.5f * temp + %.5f * rh + %.5f * wind + %.5f + Gaussian(time; Amplitude = %.5f, center = %.5f, sigma = %.5f) "
-            % (
-                a1,
-                a2,
-                a3,
-                b,
-                param_values["amplitude"],
-                param_values["center"],
-                param_values["sigma"],
+        if compile:
+            da = xr.DataArray(
+                data=np.zeros(len(temp) * len(rh) * len(v)).reshape(
+                    len(temp), len(rh), len(v)
+                ),
+                dims=["temp", "rh", "v"],
+                coords=dict(
+                    # times=times,
+                    temp=temp,
+                    rh=rh,
+                    v=v,
+                ),
+                attrs=dict(
+                    long_name="Freezing rate",
+                    description="Max. freezing rate",
+                    units="l min-1",
+                ),
             )
-        )
 
-        plt.figure()
-        ax = plt.gca()
-        da.sel(temp=slice(-15, None), rh=70, v=2).plot()
-        plt.legend()
-        plt.grid()
-        plt.savefig("figs/temp_wind.jpg")
+            da.temp.attrs["units"] = "deg C"
+            da.temp.attrs["description"] = "Air Temperature"
+            da.temp.attrs["long_name"] = "Air Temperature"
+            da.rh.attrs["units"] = "%"
+            da.rh.attrs["long_name"] = "Relative Humidity"
+            da.v.attrs["units"] = "m s-1"
+            da.v.attrs["long_name"] = "Wind Speed"
+
+            for temp in da.temp.values:
+                for rh in da.rh.values:
+                    for v in da.v.values:
+                        aws = [temp, rh, v]
+                        da.sel(temp=temp, rh=rh, v=v).data += Automate(aws, site)
+
+            da.to_netcdf("data/" + site + "_sims.nc")
+
+        else:
+
+            da = xr.open_dataarray("data/" + site + "_sims.nc")
+
+            x = []
+            y = []
+            hour = 10
+
+            for i in temp:
+                for j in rh:
+                    for k in v:
+                        # t = time + timedelta(hours=hour)
+                        x.append([i, j, k])
+                        y.append(da.sel(temp=i, rh=j, v=k).data)
+
+            popt, pcov = curve_fit(line, x, y)
+            a1, a2, a3, b = popt
+            print("y = %.5f * temp + %.5f * rh + %.5f * wind + %.5f" % (a1, a2, a3, b))
+
+            with open("data/" + site + "_daymelt.json") as f:
+                param_values = json.load(f)
+
+            param_values["a1"] = a1
+            param_values["a2"] = a2
+            param_values["a3"] = a3
+            param_values["b"] = b
+
+            with open("data/" + site + "_full.json", "w") as f:
+                json.dump(param_values, f)
+
+            print(
+                "Day melt and night freeze:",
+                autoDis(**param_values, temp=-10, time=hour),
+            )
+
+            print(
+                "y = %.5f * temp + %.5f * rh + %.5f * wind + %.5f + Gaussian(time; Amplitude = %.5f, center = %.5f, sigma = %.5f) "
+                % (
+                    a1,
+                    a2,
+                    a3,
+                    b,
+                    param_values["amplitude"],
+                    param_values["center"],
+                    param_values["sigma"],
+                )
+            )
