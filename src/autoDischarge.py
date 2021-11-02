@@ -48,11 +48,11 @@ alb = 0.4
 def Automate(aws, mode="auto"):
 
     # AWS
-    time = aws[0]
-    temp = aws[1]
-    rh = aws[2]
-    wind = aws[3]
-    SW_global = aws[4]
+    # time = aws[0]
+    temp = aws[0]
+    rh = aws[1]
+    wind = aws[2]
+    # SW_global = aws[4]
 
     # Derived
     press = atmosphere.alt2pres(alt) / 100
@@ -86,7 +86,7 @@ def Automate(aws, mode="auto"):
             1 + 0.22 * math.pow(cld, 2)
         )
 
-        SW = (1 - alb) * SW_global
+        # SW = (1 - alb) * SW_global
         # SW = (1 - alb) * clearsky["ghi"]
 
         LW = e_a * STEFAN_BOLTZMAN * math.pow(
@@ -117,7 +117,7 @@ def Automate(aws, mode="auto"):
             / ((np.log(H_AWS / Z)) ** 2)
         )
 
-        freezing_energy = Ql + Qs + LW + SW
+        freezing_energy = Ql + Qs + LW
         freezing_energy += temp_i * RHO_I * DX * C_I / DT
         dis = -1 * freezing_energy * A / L_F * 1000 / 60
 

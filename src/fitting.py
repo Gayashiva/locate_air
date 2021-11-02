@@ -1,11 +1,21 @@
 import pandas as pd
 import xarray as xr
-from lmfit.models import LinearModel, LorentzianModel, SineModel, PolynomialModel, Model
+from lmfit.models import (
+    LinearModel,
+    LorentzianModel,
+    GaussianModel,
+    PolynomialModel,
+    Model,
+)
 import matplotlib.pyplot as plt
 
 
 def datetime_to_int(dt):
-    return int(dt.strftime("%m%d%H"))
+    return int(dt.strftime("%H%M"))
+
+
+def gaussian(x, amp, cen, wid):
+    return amp * exp(-((x - cen) ** 2) / wid)
 
 
 def line(x, a1=1, a2=1, a3=1, b=1):
@@ -20,21 +30,24 @@ if __name__ == "__main__":
     da = xr.open_dataarray("data/sims.nc")
     df = da.sel(rh=10).to_dataframe(name="dis")
     df = df.reset_index()
-    print(df.head())
+    df["hour_minute"] = df["times"].apply(lambda x: datetime_to_int(x))
     print(df.tail())
-    model = Model(line)
-    print(f"parameter names: {model.param_names}")
-    print(f"independent variables: {model.independent_vars}")
-    params = model.make_params(a1=0.3, a2=3, a3=1.25, b=0)
+
+    # model = Model(line)
+    # print(f"parameter names: {model.param_names}")
+    # print(f"independent variables: {model.independent_vars}")
+    # params = model.make_params(a1=0.3, a2=3, a3=1.25, b=0)
 
     # model = LorentzianModel()
+    model = GaussianModel()
+
     # model = SineModel()
     # model = PolynomialModel()
     # model = LinearModel()
     # params = model.guess(df["dis"], x=df.int_time)
-    # params = model.guess(df["dis"], x=[df.temp, df.rh, df.v])
+    params = model.guess(df["dis"], x=df.hour_minute)
 
-    result = model.fit(df["dis"], params, x=[df.temp, df.rh, df.v])
+    result = model.fit(df["dis"], params, x=df.hour_minute)
     print(result.fit_report())
     plt.figure()
     ax = result.plot_fit()
