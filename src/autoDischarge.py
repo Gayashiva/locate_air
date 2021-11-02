@@ -2,6 +2,7 @@ import math
 import numpy as np
 from pvlib import location, atmosphere
 from datetime import datetime
+import json
 
 """Physical Constants"""
 DT = 60 * 60  # Model time step
@@ -29,104 +30,87 @@ T_PPT = 1  # Temperature condition for liquid precipitation
 DX = 20e-03  # m Surface layer thickness growth rate
 H_AWS = 2
 
-"""Location parameters"""
-lat = 46.65
-long = 8.2834
-alt = 1047.6
-utc = 2
+# """Location parameters"""
+# lat = 46.65
+# long = 8.2834
+# alt = 1047.6
+# utc = 2
 
+# cld = 0.5
+# r = 8
+# sa_corr = 1.2
 
 """Misc parameters"""
-cld = 0.5
-r = 8
-shape_corr = 1.2
 temp_i = 0
 dis_min = 0
 alb = 0.4
 
 
-def Automate(aws, mode="auto"):
+def Automate(aws, site="guttannen"):
+
+    with open("data/" + site + ".json") as f:
+        params = json.load(f)
 
     # AWS
-    # time = aws[0]
     temp = aws[0]
     rh = aws[1]
     wind = aws[2]
-    # SW_global = aws[4]
 
     # Derived
-    press = atmosphere.alt2pres(alt) / 100
-    # site = location.Location(lat, long, tz=utc, altitude=alt)
-    # solar_angle = site.get_solarposition(times=time, method="ephemeris")["elevation"][0]
-    # clearsky = site.get_clearsky(times=time)
+    press = atmosphere.alt2pres(params["alt"]) / 100
 
-    if mode not in ["demo", "auto", "stop"] or mode == "stop":
-        dis = 0
-    elif wind >= 10:
-        dis = 0
-    elif mode == "demo":
-        dis = 10
-    else:
+    A = math.pi * params["sa_corr"] * params["r"] ** 2
 
-        A = math.pi * r ** 2
-
-        vp_a = (
-            6.107
-            * math.pow(
-                10,
-                7.5 * temp / (temp + 237.3),
-            )
-            * rh
-            / 100
+    vp_a = (
+        6.107
+        * math.pow(
+            10,
+            7.5 * temp / (temp + 237.3),
         )
+        * rh
+        / 100
+    )
 
-        vp_ice = np.exp(43.494 - 6545.8 / (temp_i + 278)) / ((temp_i + 868) ** 2 * 100)
+    vp_ice = np.exp(43.494 - 6545.8 / (temp_i + 278)) / ((temp_i + 868) ** 2 * 100)
 
-        e_a = (1.24 * math.pow(abs(vp_a / (temp + 273.15)), 1 / 7)) * (
-            1 + 0.22 * math.pow(cld, 2)
-        )
+    e_a = (1.24 * math.pow(abs(vp_a / (temp + 273.15)), 1 / 7)) * (
+        1 + 0.22 * math.pow(params["cld"], 2)
+    )
 
-        # SW = (1 - alb) * SW_global
-        # SW = (1 - alb) * clearsky["ghi"]
+    LW = e_a * STEFAN_BOLTZMAN * math.pow(
+        temp + 273.15, 4
+    ) - IE * STEFAN_BOLTZMAN * math.pow(273.15 + temp_i, 4)
 
-        LW = e_a * STEFAN_BOLTZMAN * math.pow(
-            temp + 273.15, 4
-        ) - IE * STEFAN_BOLTZMAN * math.pow(273.15 + temp_i, 4)
+    Qs = (
+        C_A
+        * RHO_A
+        * press
+        / P0
+        * math.pow(VAN_KARMAN, 2)
+        * wind
+        * (temp - temp_i)
+        * params["sa_corr"]
+        / ((np.log(H_AWS / Z)) ** 2)
+    )
 
-        Qs = (
-            C_A
-            * RHO_A
-            * press
-            / P0
-            * math.pow(VAN_KARMAN, 2)
-            * wind
-            * (temp - temp_i)
-            * shape_corr
-            / ((np.log(H_AWS / Z)) ** 2)
-        )
+    Ql = (
+        0.623
+        * L_S
+        * RHO_A
+        / P0
+        * math.pow(VAN_KARMAN, 2)
+        * wind
+        * (vp_a - vp_ice)
+        * params["sa_corr"]
+        / ((np.log(H_AWS / Z)) ** 2)
+    )
 
-        Ql = (
-            0.623
-            * L_S
-            * RHO_A
-            / P0
-            * math.pow(VAN_KARMAN, 2)
-            * wind
-            * (vp_a - vp_ice)
-            * shape_corr
-            / ((np.log(H_AWS / Z)) ** 2)
-        )
-
-        freezing_energy = Ql + Qs + LW
-        freezing_energy += temp_i * RHO_I * DX * C_I / DT
-        dis = -1 * freezing_energy * A / L_F * 1000 / 60
-
-        if dis <= dis_min:
-            dis = 0
+    freezing_energy = Ql + Qs + LW
+    freezing_energy += temp_i * RHO_I * DX * C_I / DT
+    dis = -1 * freezing_energy * A / L_F * 1000 / 60
 
     return round(dis, 1)
 
 
 if __name__ == "__main__":
-    aws = [datetime(2019, 1, 1), -2, 50, 5]
-    print("Recommended discharge", Discharge(aws))
+    print("Recommended discharge", Automate([-10, 80, 1]))
