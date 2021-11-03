@@ -42,7 +42,8 @@ if __name__ == "__main__":
 
         df["hour_minute"] = df["index"].apply(lambda x: datetime_to_int(x))
         A = math.pi * params["sa_corr"] * params["r"] ** 2
-        df["dis"] = -1 * df["ghi"] * params["f_cone"] * A / L_F * 1000 / 60
+        f_cone = params["cld"] + (1 - params["cld"]) * 0.3
+        df["dis"] = -1 * df["ghi"] * f_cone * A / L_F * 1000 / 60
 
         x = df.hour_minute
         y = df.dis.values

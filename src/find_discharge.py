@@ -11,8 +11,6 @@ from autoDischarge import Automate
 from lmfit.models import LinearModel, GaussianModel
 import json
 
-site = "guttannen"
-
 
 def line(x, a1, a2, a3, b):
     x1 = x[:, 0]

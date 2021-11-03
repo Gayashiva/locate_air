@@ -5,8 +5,6 @@ import json
 from find_discharge import autoDis
 import matplotlib.pyplot as plt
 
-site = "guttannen"
-
 if __name__ == "__main__":
     # compile = True
     compile = False
