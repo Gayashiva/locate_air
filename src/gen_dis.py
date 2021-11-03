@@ -11,11 +11,11 @@ if __name__ == "__main__":
     # compile = True
     compile = False
 
-    sites = ["gangles", "guttannen"]
+    sites = ["gangles21", "guttannen21"]
 
     for site in sites:
 
-        with open("data/" + site + ".json") as f:
+        with open("data/" + site + "/info.json") as f:
             params = json.load(f)
 
         hours = list(range(0, 24, 1))
@@ -52,7 +52,7 @@ if __name__ == "__main__":
             da.v.attrs["units"] = "m s-1"
             da.v.attrs["long_name"] = "Wind Speed"
 
-            with open("data/" + site + "_full.json") as f:
+            with open("data/" + site + "/coeff.json") as f:
                 param_values = json.load(f)
 
             for hour in da.hours.values:
@@ -63,10 +63,10 @@ if __name__ == "__main__":
                                 **param_values, time=hour, temp=temp, rh=rh, v=v
                             )
 
-            da.to_netcdf("data/" + site + "_dis.nc")
+            da.to_netcdf("data/" + site + "/dis.nc")
 
         else:
-            da = xr.open_dataarray("data/" + site + "_dis.nc")
+            da = xr.open_dataarray("data/" + site + "/dis.nc")
             plt.figure()
             ax = plt.gca()
             da.sel(
@@ -76,4 +76,4 @@ if __name__ == "__main__":
             ).plot(cmap="RdBu")
             plt.legend()
             plt.grid()
-            plt.savefig("figs/" + site + "_dis.jpg")
+            plt.savefig("data/" + site + "/figs/dis.jpg")

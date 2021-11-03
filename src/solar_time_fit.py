@@ -18,10 +18,10 @@ def datetime_to_int(dt):
 
 
 if __name__ == "__main__":
-    sites = ["gangles", "guttannen"]
+    sites = ["gangles21", "guttannen21"]
     for site in sites:
 
-        with open("data/" + site + ".json") as f:
+        with open("data/" + site + "/info.json") as f:
             params = json.load(f)
 
         times = pd.date_range("2019-02-01", freq="H", periods=1 * 24)
@@ -47,10 +47,10 @@ if __name__ == "__main__":
         plt.xlabel("Time of day [hour]")
         plt.legend()
         plt.grid()
-        plt.savefig("figs/" + site + "_daymelt.jpg")
+        plt.savefig("data/" + site + "/figs/daymelt.jpg")
 
         print(f"parameter names: {model.param_names}")
         print(f"independent variables: {model.independent_vars}")
         param_values = dict(result.best_values)
-        with open("data/" + site + "_daymelt.json", "w") as f:
+        with open("data/" + site + "/daymelt.json", "w") as f:
             json.dump(param_values, f)

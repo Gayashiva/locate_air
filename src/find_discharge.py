@@ -31,10 +31,10 @@ if __name__ == "__main__":
     # compile = True
     compile = False
 
-    sites = ["gangles", "guttannen"]
+    sites = ["gangles21", "guttannen21"]
 
     for site in sites:
-        with open("data/" + site + ".json") as f:
+        with open("data/" + site + "/info.json") as f:
             params = json.load(f)
 
         temp = list(range(params["temp"][0], params["temp"][1] + 1))
@@ -74,11 +74,11 @@ if __name__ == "__main__":
                         aws = [temp, rh, v]
                         da.sel(temp=temp, rh=rh, v=v).data += Automate(aws, site)
 
-            da.to_netcdf("data/" + site + "_sims.nc")
+            da.to_netcdf("data/" + site + "/sims.nc")
 
         else:
 
-            da = xr.open_dataarray("data/" + site + "_sims.nc")
+            da = xr.open_dataarray("data/" + site + "/sims.nc")
 
             x = []
             y = []
@@ -95,7 +95,7 @@ if __name__ == "__main__":
             a1, a2, a3, b = popt
             print("y = %.5f * temp + %.5f * rh + %.5f * wind + %.5f" % (a1, a2, a3, b))
 
-            with open("data/" + site + "_daymelt.json") as f:
+            with open("data/" + site + "/daymelt.json") as f:
                 param_values = json.load(f)
 
             param_values["a1"] = a1
@@ -103,7 +103,7 @@ if __name__ == "__main__":
             param_values["a3"] = a3
             param_values["b"] = b
 
-            with open("data/" + site + "_full.json", "w") as f:
+            with open("data/" + site + "/coeff.json", "w") as f:
                 json.dump(param_values, f)
 
             print(

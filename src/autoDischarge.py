@@ -36,9 +36,9 @@ dis_min = 0
 alb = 0.4
 
 
-def Automate(aws, site="guttannen"):
+def Automate(aws, site="guttannen21"):
 
-    with open("data/" + site + ".json") as f:
+    with open("data/" + site + "/info.json") as f:
         params = json.load(f)
 
     # AWS
