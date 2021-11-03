@@ -8,6 +8,7 @@ import xarray as xr
 import math
 from lmfit.models import LinearModel, GaussianModel
 import json
+import pytz
 
 
 L_F = 334 * 1000  # J/kg Fusion
@@ -24,11 +25,19 @@ if __name__ == "__main__":
         with open("data/" + site + "/info.json") as f:
             params = json.load(f)
 
-        times = pd.date_range("2019-02-01", freq="H", periods=1 * 24)
+        times = pd.date_range(
+            "2019-02-01",
+            freq="H",
+            periods=1 * 24,
+        )
+        times -= pd.Timedelta(hours=params["utc"])
         loc = location.Location(
-            params["lat"], params["long"], tz=params["utc"], altitude=params["alt"]
+            params["lat"],
+            params["long"],
+            altitude=params["alt"],
         )
         df = loc.get_clearsky(times=times)
+        df.index += pd.Timedelta(hours=params["utc"])
         df = df.reset_index()
 
         df["hour_minute"] = df["index"].apply(lambda x: datetime_to_int(x))
