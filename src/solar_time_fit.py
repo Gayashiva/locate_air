@@ -36,23 +36,46 @@ if __name__ == "__main__":
             params["long"],
             altitude=params["alt"],
         )
-        df = loc.get_clearsky(times=times)
+
+        solar_position = loc.get_solarposition(times=times, method="ephemeris")
+        clearsky = loc.get_clearsky(times=times)
+
+        df = pd.DataFrame(
+            {
+                "ghi": clearsky["ghi"],
+                "sea": np.radians(solar_position["elevation"]),
+            }
+        )
         df.index += pd.Timedelta(hours=params["utc"])
+        df.loc[df["sea"] < 0, "sea"] = 0
         df = df.reset_index()
+        df["hour"] = df["index"].apply(lambda x: datetime_to_int(x))
+        df["f_cone"] = 0
 
-        df["hour_minute"] = df["index"].apply(lambda x: datetime_to_int(x))
         A = math.pi * params["sa_corr"] * params["r"] ** 2
-        f_cone = params["cld"] + (1 - params["cld"]) * 0.3
-        df["dis"] = -1 * df["ghi"] * f_cone * A / L_F * 1000 / 60
 
-        x = df.hour_minute
-        y = df.dis.values
+        for i in range(0, df.shape[0]):
+            df.loc[i, "f_cone"] = (
+                math.pi * math.pow(params["r"], 2) * 0.5 * math.sin(df.loc[i, "sea"])
+            ) / A
+            df.loc[i, "SW_direct"] = (
+                (1 - params["cld"]) * df.loc[i, "f_cone"] * df.loc[i, "ghi"]
+            )
+            df.loc[i, "SW_diffuse"] = params["cld"] * df.loc[i, "ghi"]
+        df["dis"] = -1 * (df["SW_direct"] + df["SW_diffuse"]) * A / L_F * 1000 / 60
+        print(df.head())
+
+        x = df.hour
+        y = df.dis
+        y1 = df.f_cone
         model = GaussianModel()
         gauss_params = model.guess(y, x)
-        result = model.fit(y, gauss_params, x=df.hour_minute)
+        result = model.fit(y, gauss_params, x=df.hour)
 
         plt.figure()
         plt.plot(x, result.best_fit, "-")
+        # plt.plot(x, y1, "-")
+        # plt.plot(x, y2, "--")
         plt.ylabel("Daymelt [l min-1]")
         plt.xlabel("Time of day [hour]")
         plt.legend()

@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from pvlib import location, atmosphere
 import matplotlib.pyplot as plt
 from autoDischarge import Automate
-from lmfit.models import LinearModel, GaussianModel
+from lmfit.models import GaussianModel
 import json
 
 
@@ -85,7 +85,6 @@ if __name__ == "__main__":
             for i in temp:
                 for j in rh:
                     for k in v:
-                        # t = time + timedelta(hours=hour)
                         x.append([i, j, k])
                         y.append(da.sel(temp=i, rh=j, v=k).data)
 
