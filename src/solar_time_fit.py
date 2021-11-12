@@ -10,7 +10,6 @@ from lmfit.models import LinearModel, GaussianModel
 import json
 import pytz
 
-
 L_F = 334 * 1000  # J/kg Fusion
 
 
@@ -26,10 +25,11 @@ if __name__ == "__main__":
             params = json.load(f)
 
         times = pd.date_range(
-            "2019-02-01",
+            "2019-01-01",
             freq="H",
             periods=1 * 24,
         )
+
         times -= pd.Timedelta(hours=params["utc"])
         loc = location.Location(
             params["lat"],
@@ -59,10 +59,16 @@ if __name__ == "__main__":
                 math.pi * math.pow(params["r"], 2) * 0.5 * math.sin(df.loc[i, "sea"])
             ) / A
             df.loc[i, "SW_direct"] = (
-                (1 - params["cld"]) * df.loc[i, "f_cone"] * df.loc[i, "ghi"]
+                (1 - params["cld"])
+                * df.loc[i, "f_cone"]
+                * (1 - params["a_i"])
+                * df.loc[i, "ghi"]
             )
-            df.loc[i, "SW_diffuse"] = params["cld"] * df.loc[i, "ghi"]
-        df["dis"] = -1 * (df["SW_direct"] + df["SW_diffuse"]) * A / L_F * 1000 / 60
+            df.loc[i, "SW_diffuse"] = (
+                params["cld"] * (1 - params["a_i"]) * df.loc[i, "ghi"]
+            )
+        # df["dis"] = -1 * (df["SW_direct"] + df["SW_diffuse"]) * A / L_F * 1000 / 60
+        df["dis"] = 0
         print(df.head())
 
         x = df.hour
