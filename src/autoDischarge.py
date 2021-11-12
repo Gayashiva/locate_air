@@ -97,7 +97,8 @@ def Automate(aws, site="guttannen21"):
 
     freezing_energy = Ql + Qs + LW
     freezing_energy += temp_i * RHO_I * DX * C_I / DT
-    dis = -1 * freezing_energy * A / L_F * 1000 / 60
+    # dis = -1 * freezing_energy * A / L_F * 1000 / 60
+    dis = -1 * freezing_energy / L_F * 1000 / 60
 
     return round(dis, 1)
 
