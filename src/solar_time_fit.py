@@ -8,7 +8,6 @@ import xarray as xr
 import math
 from lmfit.models import LinearModel, GaussianModel
 import json
-import pytz
 
 L_F = 334 * 1000  # J/kg Fusion
 
@@ -25,7 +24,7 @@ if __name__ == "__main__":
             params = json.load(f)
 
         times = pd.date_range(
-            "2019-01-01",
+            "2019-02-01",
             freq="H",
             periods=1 * 24,
         )
