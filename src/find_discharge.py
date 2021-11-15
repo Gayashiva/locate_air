@@ -12,17 +12,17 @@ from lmfit.models import GaussianModel
 import json
 
 
-def line(x, a1, a2, a3, b):
+def line(x, a, b, c, d):
     x1 = x[:, 0]
     x2 = x[:, 1]
     x3 = x[:, 2]
-    return a1 * x1 + a2 * x2 + a3 * x3 + b
+    return a * x1 + b * x2 + c * x3 + d
 
 
-def autoDis(a1, a2, a3, b, amplitude, center, sigma, temp, time=10, rh=10, v=2):
+def autoDis(a, b, c, d, amplitude, center, sigma, temp, time, rh, v):
     model = GaussianModel()
     params = {"amplitude": amplitude, "center": center, "sigma": sigma}
-    return a1 * temp + a2 * rh + a3 * v + b + model.eval(x=time, **params)
+    return a * temp + b * rh + c * v + d + model.eval(x=time, **params)
 
 
 if __name__ == "__main__":
@@ -80,7 +80,6 @@ if __name__ == "__main__":
 
             x = []
             y = []
-            hour = 10
 
             for i in temp:
                 for j in rh:
@@ -89,36 +88,38 @@ if __name__ == "__main__":
                         y.append(da.sel(temp=i, rh=j, v=k).data)
 
             popt, pcov = curve_fit(line, x, y)
-            a1, a2, a3, b = popt
-            print("For %s, dis = %.5f * temp + %.5f * rh + %.5f * wind + %.5f" % (site, a1, a2, a3, b))
+            a, b, c, d = popt
+            print("For %s, dis = %.5f * temp + %.5f * rh + %.5f * wind + %.5f" % (site, a, b, c, d))
 
             param_values = {}
 
-            # with open("data/" + site + "/daymelt.json") as f:
-            #     param_values = json.load(f)
+            with open("data/" + site + "/daymelt.json") as f:
+                param_values = json.load(f)
 
-            param_values["a1"] = a1
-            param_values["a2"] = a2
-            param_values["a3"] = a3
+            param_values["a"] = a
             param_values["b"] = b
+            param_values["c"] = c
+            param_values["d"] = d
 
             with open("data/" + site + "/coeff.json", "w") as f:
                 json.dump(param_values, f)
+            with open("../air_model/data/" + site + "/interim/coeff.json", "w") as f:
+                json.dump(param_values, f)
 
-            # print(
-            #     "Day melt and night freeze:",
-            #     autoDis(**param_values, temp=-10, time=hour),
-            # )
+            print(
+                "Day melt and night freeze:",
+                autoDis(**param_values, temp=-10, time=10, rh=50, v=1),
+            )
 
-            # print(
-            #     "y = %.5f * temp + %.5f * rh + %.5f * wind + %.5f + Gaussian(time; Amplitude = %.5f, center = %.5f, sigma = %.5f) "
-            #     % (
-            #         a1,
-            #         a2,
-            #         a3,
-            #         b,
-            #         param_values["amplitude"],
-            #         param_values["center"],
-            #         param_values["sigma"],
-            #     )
-            # )
+            print(
+                "y = %.5f * temp + %.5f * rh + %.5f * wind + %.5f + Gaussian(time; Amplitude = %.5f, center = %.5f, sigma = %.5f) "
+                % (
+                    a,
+                    b,
+                    c,
+                    d,
+                    param_values["amplitude"],
+                    param_values["center"],
+                    param_values["sigma"],
+                )
+            )

@@ -67,8 +67,7 @@ if __name__ == "__main__":
             df.loc[i, "SW_diffuse"] = (
                 params["cld"] * (1 - params["a_i"]) * df.loc[i, "ghi"]
             )
-        # df["dis"] = -1 * (df["SW_direct"] + df["SW_diffuse"]) * A / L_F * 1000 / 60
-        df["dis"] = -1 * (df["SW_direct"] + df["SW_diffuse"]) / L_F * 1000 / 60
+        df["dis"] = -1 * (df["SW_direct"] + df["SW_diffuse"]) * A / L_F * 1000 / 60
         print(df.head())
 
         x = df.hour
