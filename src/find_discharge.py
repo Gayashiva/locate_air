@@ -26,8 +26,8 @@ def autoDis(a1, a2, a3, b, amplitude, center, sigma, temp, time=10, rh=10, v=2):
 
 
 if __name__ == "__main__":
-    # compile = True
-    compile = False
+    compile = True
+    # compile = False
 
     sites = ["gangles21", "guttannen21"]
 
