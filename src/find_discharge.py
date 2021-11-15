@@ -26,8 +26,8 @@ def autoDis(a1, a2, a3, b, amplitude, center, sigma, temp, time=10, rh=10, v=2):
 
 
 if __name__ == "__main__":
-    compile = True
-    # compile = False
+    # compile = True
+    compile = False
 
     sites = ["gangles21", "guttannen21"]
 
@@ -90,10 +90,12 @@ if __name__ == "__main__":
 
             popt, pcov = curve_fit(line, x, y)
             a1, a2, a3, b = popt
-            print("y = %.5f * temp + %.5f * rh + %.5f * wind + %.5f" % (a1, a2, a3, b))
+            print("For %s, dis = %.5f * temp + %.5f * rh + %.5f * wind + %.5f" % (site, a1, a2, a3, b))
 
-            with open("data/" + site + "/daymelt.json") as f:
-                param_values = json.load(f)
+            param_values = {}
+
+            # with open("data/" + site + "/daymelt.json") as f:
+            #     param_values = json.load(f)
 
             param_values["a1"] = a1
             param_values["a2"] = a2
@@ -103,20 +105,20 @@ if __name__ == "__main__":
             with open("data/" + site + "/coeff.json", "w") as f:
                 json.dump(param_values, f)
 
-            print(
-                "Day melt and night freeze:",
-                autoDis(**param_values, temp=-10, time=hour),
-            )
+            # print(
+            #     "Day melt and night freeze:",
+            #     autoDis(**param_values, temp=-10, time=hour),
+            # )
 
-            print(
-                "y = %.5f * temp + %.5f * rh + %.5f * wind + %.5f + Gaussian(time; Amplitude = %.5f, center = %.5f, sigma = %.5f) "
-                % (
-                    a1,
-                    a2,
-                    a3,
-                    b,
-                    param_values["amplitude"],
-                    param_values["center"],
-                    param_values["sigma"],
-                )
-            )
+            # print(
+            #     "y = %.5f * temp + %.5f * rh + %.5f * wind + %.5f + Gaussian(time; Amplitude = %.5f, center = %.5f, sigma = %.5f) "
+            #     % (
+            #         a1,
+            #         a2,
+            #         a3,
+            #         b,
+            #         param_values["amplitude"],
+            #         param_values["center"],
+            #         param_values["sigma"],
+            #     )
+            # )

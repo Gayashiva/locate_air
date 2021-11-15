@@ -32,8 +32,7 @@ H_AWS = 2
 
 """Misc parameters"""
 temp_i = 0
-dis_min = 0
-alb = 0.4
+# dis_min = 0.5
 
 
 def Automate(aws, site="guttannen21"):
@@ -79,7 +78,6 @@ def Automate(aws, site="guttannen21"):
         * math.pow(VAN_KARMAN, 2)
         * wind
         * (temp - temp_i)
-        * params["sa_corr"]
         / ((np.log(H_AWS / Z)) ** 2)
     )
 
@@ -91,14 +89,15 @@ def Automate(aws, site="guttannen21"):
         * math.pow(VAN_KARMAN, 2)
         * wind
         * (vp_a - vp_ice)
-        * params["sa_corr"]
         / ((np.log(H_AWS / Z)) ** 2)
     )
 
     freezing_energy = Ql + Qs + LW
     freezing_energy += temp_i * RHO_I * DX * C_I / DT
-    # dis = -1 * freezing_energy * A / L_F * 1000 / 60
-    dis = -1 * freezing_energy / L_F * 1000 / 60
+    dis = -1 * freezing_energy * A / L_F * 1000 / 60
+
+    # if dis < dis_min:
+    #     dis = 0
 
     return round(dis, 1)
 
