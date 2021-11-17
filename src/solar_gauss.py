@@ -49,13 +49,13 @@ if __name__ == "__main__":
         df["hour"] = df["index"].apply(lambda x: datetime_to_int(x))
         df["f_cone"] = 0
 
-        A = math.pi * params["sa_corr"] * params["r"] ** 2
+        SA = math.pi * params["r"] * math.pow(2 * math.pow(params["r"], 2),1 / 2)
 
         for i in range(0, df.shape[0]):
             df.loc[i, "f_cone"] = (
                 math.pi * math.pow(params["r"], 2) * 0.5 * math.sin(df.loc[i, "sea"])
                 + 0.5 * math.pow(params["r"], 2) * math.cos(df.loc[i, "sea"])
-            ) / A
+            ) / SA
 
             df.loc[i, "SW_direct"] = (
                 (1 - params["cld"])
@@ -65,7 +65,7 @@ if __name__ == "__main__":
             df.loc[i, "SW_diffuse"] = (
                 params["cld"]  * df.loc[i, "ghi"]
             )
-        df["dis"] = -1 * (1 - params["a_i"]) * (df["SW_direct"] + df["SW_diffuse"]) * A / L_F * 1000 / 60
+        df["dis"] = -1 * (1 - params["alb"]) * (df["SW_direct"] + df["SW_diffuse"]) * SA / L_F * 1000 / 60
 
         x = df.hour
         y = df.dis
