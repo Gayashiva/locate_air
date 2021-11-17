@@ -18,7 +18,6 @@ def line(x, a, b, c, d):
     x3 = x[:, 2]
     return a * x1 + b * x2 + c * x3 + d
 
-
 def autoDis(a, b, c, d, amplitude, center, sigma, temp, time, rh, v):
     model = GaussianModel()
     params = {"amplitude": amplitude, "center": center, "sigma": sigma}
@@ -46,7 +45,6 @@ if __name__ == "__main__":
                 ),
                 dims=["temp", "rh", "v"],
                 coords=dict(
-                    # times=times,
                     temp=temp,
                     rh=rh,
                     v=v,

@@ -22,17 +22,12 @@ G = 9.81  # Gravitational acceleration
 
 """Surface Properties"""
 IE = 0.97  # Ice Emissivity IE
-A_I = 0.25  # Albedo of Ice A_I
-A_S = 0.85  # Albedo of Fresh Snow A_S
-A_DECAY = 16  # Albedo decay rate decay_t_d
 Z = 0.003  # Ice Momentum and Scalar roughness length
-T_PPT = 1  # Temperature condition for liquid precipitation
 DX = 20e-03  # m Surface layer thickness growth rate
 H_AWS = 2
 
-"""Misc parameters"""
+"""Assumptions"""
 temp_i = 0
-# dis_min = 0.5
 
 
 def Automate(aws, site="guttannen21"):
@@ -47,7 +42,6 @@ def Automate(aws, site="guttannen21"):
 
     # Derived
     press = atmosphere.alt2pres(params["alt"]) / 100
-
     A = math.pi * params["sa_corr"] * params["r"] ** 2
 
     vp_a = (
@@ -95,9 +89,6 @@ def Automate(aws, site="guttannen21"):
     freezing_energy = Ql + Qs + LW
     freezing_energy += temp_i * RHO_I * DX * C_I / DT
     dis = -1 * freezing_energy * A / L_F * 1000 / 60
-
-    # if dis < dis_min:
-    #     dis = 0
 
     return round(dis, 1)
 

@@ -11,10 +11,8 @@ import json
 
 L_F = 334 * 1000  # J/kg Fusion
 
-
 def datetime_to_int(dt):
     return int(dt.strftime("%H"))
-
 
 if __name__ == "__main__":
     sites = ["gangles21", "guttannen21"]
@@ -24,7 +22,7 @@ if __name__ == "__main__":
             params = json.load(f)
 
         times = pd.date_range(
-            "2019-02-01",
+            params["solar_day"],
             freq="H",
             periods=1 * 24,
         )
@@ -56,18 +54,18 @@ if __name__ == "__main__":
         for i in range(0, df.shape[0]):
             df.loc[i, "f_cone"] = (
                 math.pi * math.pow(params["r"], 2) * 0.5 * math.sin(df.loc[i, "sea"])
+                + 0.5 * math.pow(params["r"], 2) * math.cos(df.loc[i, "sea"])
             ) / A
+
             df.loc[i, "SW_direct"] = (
                 (1 - params["cld"])
                 * df.loc[i, "f_cone"]
-                * (1 - params["a_i"])
                 * df.loc[i, "ghi"]
             )
             df.loc[i, "SW_diffuse"] = (
-                params["cld"] * (1 - params["a_i"]) * df.loc[i, "ghi"]
+                params["cld"]  * df.loc[i, "ghi"]
             )
-        df["dis"] = -1 * (df["SW_direct"] + df["SW_diffuse"]) * A / L_F * 1000 / 60
-        print(df.head())
+        df["dis"] = -1 * (1 - params["a_i"]) * (df["SW_direct"] + df["SW_diffuse"]) * A / L_F * 1000 / 60
 
         x = df.hour
         y = df.dis
@@ -89,5 +87,7 @@ if __name__ == "__main__":
         print(f"parameter names: {model.param_names}")
         print(f"independent variables: {model.independent_vars}")
         param_values = dict(result.best_values)
+        print(param_values)
+
         with open("data/" + site + "/daymelt.json", "w") as f:
             json.dump(param_values, f)
