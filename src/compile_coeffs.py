@@ -28,7 +28,8 @@ if __name__ == "__main__":
     # compile = True
     compile = False
 
-    sites = ["gangles21", "guttannen21"]
+    # sites = ["gangles21", "guttannen21"]
+    sites = ["guttannen21"]
 
     for site in sites:
         with open("data/" + site + "/info.json") as f:

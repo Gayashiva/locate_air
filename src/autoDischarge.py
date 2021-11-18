@@ -111,7 +111,7 @@ if __name__ == "__main__":
         with open("data/" + site + "/info.json") as f:
             params = json.load(f)
 
-        mean_dis = Automate(params["aws"])
+        mean_dis = Automate(params["aws"],site)
 
         desired_dis = get_droplet_projectile(h_f=params["h_f"], dia=0.005, r=params["r"])
 
