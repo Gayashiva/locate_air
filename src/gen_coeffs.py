@@ -6,7 +6,7 @@ import json
 import math
 from solar_gauss import Daymelt
 from autoDischarge import Automate
-from droplet import get_droplet_projectile
+from projectile import get_projectile
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 from lmfit.models import GaussianModel
@@ -36,7 +36,7 @@ if __name__ == "__main__":
         """Calculate Virtual radius"""
         mean_dis = Automate(params["aws"],site)
 
-        desired_dis = get_droplet_projectile(h_f=params["h_f"], dia=0.005, r=params["r"])
+        desired_dis = get_projectile(h_f=params["h_f"], dia=0.005, r=params["r"])
 
         VA = desired_dis/mean_dis
         params["virtual_r"] = round(math.sqrt(VA/math.pi),2)
