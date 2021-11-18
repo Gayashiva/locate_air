@@ -97,4 +97,4 @@ def Automate(aws, site="guttannen21"):
 
 
 if __name__ == "__main__":
-    print("Recommended discharge", Automate([-10, 80, 1]))
+    print("Recommended discharge", Automate([2, 79, 2]))
