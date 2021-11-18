@@ -68,7 +68,7 @@ if __name__ == "__main__":
                 for rh in da.rh.values:
                     for v in da.v.values:
                         aws = [temp, rh, v]
-                        da.sel(temp=temp, rh=rh, v=v).data += Automate(aws, site)
+                        da.sel(temp=temp, rh=rh, v=v).data += Automate(aws, site, virtual_r=params["virtual_r"])
 
             da.to_netcdf("data/" + site + "/sims.nc")
 

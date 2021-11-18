@@ -49,7 +49,7 @@ if __name__ == "__main__":
         df["hour"] = df["index"].apply(lambda x: datetime_to_int(x))
         df["f_cone"] = 0
 
-        SA = math.pi * params["r"] * math.pow(2 * math.pow(params["r"], 2),1 / 2)
+        SA = math.pi * math.pow(params["r"],2) 
 
         for i in range(0, df.shape[0]):
             df.loc[i, "f_cone"] = (

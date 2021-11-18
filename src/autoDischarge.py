@@ -2,7 +2,10 @@ import math
 import numpy as np
 from pvlib import location, atmosphere
 from datetime import datetime
+from droplet import get_droplet_projectile
 import json
+import logging
+import coloredlogs
 
 """Physical Constants"""
 DT = 60 * 60  # Model time step
@@ -26,7 +29,7 @@ Z = 0.003  # Ice Momentum and Scalar roughness length
 DX = 20e-03  # m Surface layer thickness growth rate
 H_AWS = 2
 
-def Automate(aws, site="guttannen21"):
+def Automate(aws, site="guttannen21", virtual_r = 0):
 
     with open("data/" + site + "/info.json") as f:
         params = json.load(f)
@@ -38,7 +41,6 @@ def Automate(aws, site="guttannen21"):
 
     # Derived
     press = atmosphere.alt2pres(params["alt"]) / 100
-    SA = math.pi * params["r"] * math.pow(2 * math.pow(params["r"], 2),1 / 2)
 
     vp_a = (
         6.107
@@ -91,10 +93,34 @@ def Automate(aws, site="guttannen21"):
     )
 
     freezing_energy = Ql + Qs + LW + Qf
-    dis = -1 * freezing_energy * SA / L_F * 1000 / 60
+    dis = -1 * freezing_energy / L_F * 1000 / 60
 
-    return round(dis, 1)
+    if virtual_r:
+        SA = math.pi * math.pow(params["virtual_r"],2)
+        dis *= SA
+
+    return dis
 
 
 if __name__ == "__main__":
-    print("Recommended discharge", Automate([2, 79, 2]))
+    # Main logger
+    logger = logging.getLogger(__name__)
+    logger.setLevel("INFO")
+    sites = ["gangles21", "guttannen21"]
+    for site in sites:
+        with open("data/" + site + "/info.json") as f:
+            params = json.load(f)
+
+        mean_dis = Automate(params["aws"])
+
+        desired_dis = get_droplet_projectile(h_f=params["h_f"], dia=0.005, r=params["r"])
+
+        VA = desired_dis/mean_dis
+        params["virtual_r"] = round(math.sqrt(VA/math.pi),2)
+
+        print(f"Virtual radius for {site} is {params['virtual_r']} for recommended radius of {params['r']}" )
+        print(f"Recommended discharge for {site} is {desired_dis}" )
+
+        with open("data/" + site + "/info.json", "w") as f:
+            json.dump(params, f)
+
